@@ -11,7 +11,8 @@ def compute_features(snapshot: MarketSnapshot) -> pd.DataFrame:
     df = snapshot.data.copy()
     df["return"] = df["close"].pct_change().fillna(0)
     df["range"] = (df["high"] - df["low"]) / df["close"].replace(0, 1)
-    df["volume_z"] = (df["volume"] - df["volume"].mean()) / df["volume"].std(ddof=0)
+    vol_std = df["volume"].std(ddof=0)
+    df["volume_z"] = (df["volume"] - df["volume"].mean()) / vol_std if vol_std > 0 else 0.0
     df["ma_5"] = df["close"].rolling(5).mean().bfill()
     return df
 

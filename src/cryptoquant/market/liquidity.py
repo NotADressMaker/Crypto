@@ -19,6 +19,8 @@ def forecast_slippage(
     venue: str,
     horizon: str,
 ) -> Dict[str, Any]:
+    if features.empty:
+        raise ValueError("Cannot forecast slippage: features DataFrame is empty")
     row = features.iloc[0]
     volume = _coerce_positive(float(row.get("volume", 0.0)), 1.0)
     price_range = _coerce_positive(float(row.get("range", 0.0)))

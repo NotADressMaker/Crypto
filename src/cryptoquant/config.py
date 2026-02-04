@@ -104,9 +104,22 @@ class AppConfig:
     monitoring: MonitoringConfig
 
 
+_REQUIRED_TOP_KEYS = [
+    "repo_name", "system_goal", "base_model", "seed",
+    "data", "features", "datasets", "models", "backtest",
+    "risk", "serve", "liquidity", "addon", "monitoring",
+]
+
+
 def load_config(path: str) -> AppConfig:
     with open(path, "r", encoding="utf-8") as handle:
         raw = yaml.safe_load(handle)
+
+    if not isinstance(raw, dict):
+        raise ValueError(f"Config file {path} must contain a YAML mapping, got {type(raw).__name__}")
+    missing = [k for k in _REQUIRED_TOP_KEYS if k not in raw]
+    if missing:
+        raise ValueError(f"Config file {path} missing required keys: {', '.join(missing)}")
 
     return AppConfig(
         repo_name=raw["repo_name"],

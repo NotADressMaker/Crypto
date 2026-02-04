@@ -5,13 +5,15 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Optional
 import pandas as pd
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from cryptoquant.config import AppConfig
 from cryptoquant.datasets.builder import build_dataset
 from cryptoquant.market.liquidity import forecast_slippage
 from cryptoquant.models.router import predict_with_router, train_router, model_path
 from cryptoquant.risk.gates import apply_risk_gates
+
+MAX_TRADE_SIZE = 1_000_000_000.0
 
 
 @dataclass
@@ -23,8 +25,8 @@ class _DatasetCache:
 
     def load(self, config: AppConfig) -> pd.DataFrame:
         dataset_path = Path(build_dataset(config))
-        mtime = dataset_path.stat().st_mtime
         with self.lock:
+            mtime = dataset_path.stat().st_mtime
             if self.path == dataset_path and self.data is not None and self.mtime == mtime:
                 return self.data
             data = pd.read_csv(dataset_path)
@@ -50,7 +52,10 @@ def _latest_features(
         data = data[data["venue"] == venue]
     if data.empty:
         data = cache.load(config)
-    return data.tail(1)
+    result = data.tail(1)
+    if result.empty:
+        raise HTTPException(status_code=404, detail="No feature data available")
+    return result
 
 
 def _ensure_model(config: AppConfig) -> None:
@@ -84,9 +89,9 @@ def create_app(config: AppConfig) -> FastAPI:
             action = "BUY"
 
         return {
-            "symbol": features["symbol"].iloc[0],
-            "horizon": features["horizon"].iloc[0],
-            "venue": features["venue"].iloc[0],
+            "symbol": str(features["symbol"].iloc[0]),
+            "horizon": str(features["horizon"].iloc[0]),
+            "venue": str(features["venue"].iloc[0]),
             "probability": float(probs.iloc[0]),
             "action": action,
             "execution_on": config.risk.execution_on,
@@ -94,15 +99,15 @@ def create_app(config: AppConfig) -> FastAPI:
 
     @app.get("/slippage")
     def slippage(
-        size: float = Query(..., gt=0),
+        size: float = Query(..., gt=0, le=MAX_TRADE_SIZE),
         symbol: Optional[str] = None,
         horizon: Optional[str] = None,
         venue: Optional[str] = None,
     ) -> dict[str, Any]:
         features = _latest_features(config, cache, symbol=symbol, horizon=horizon, venue=venue)
-        resolved_symbol = features["symbol"].iloc[0]
-        resolved_horizon = features["horizon"].iloc[0]
-        resolved_venue = features["venue"].iloc[0]
+        resolved_symbol = str(features["symbol"].iloc[0])
+        resolved_horizon = str(features["horizon"].iloc[0])
+        resolved_venue = str(features["venue"].iloc[0])
         forecast = forecast_slippage(
             config,
             features,
@@ -134,8 +139,8 @@ def create_dashboard_app(config: AppConfig) -> FastAPI:
             config,
             features,
             size=config.liquidity.size_reference,
-            venue=features["venue"].iloc[0],
-            horizon=features["horizon"].iloc[0],
+            venue=str(features["venue"].iloc[0]),
+            horizon=str(features["horizon"].iloc[0]),
         )
         html = f"""
         <html>
