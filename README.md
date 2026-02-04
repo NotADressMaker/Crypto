@@ -2,6 +2,12 @@
 
 A minimal, deterministic crypto quant system scaffold for prop trading research. It includes ingestion, feature store, dataset builder, training, backtesting, signal serving, risk gates, optional execution gating, and a monitoring-friendly layout. Addon modules provide a prop trader dashboard, a quantum-inspired predictor, and a Nash equilibrium analyzer that are fully optional and leave core behavior unchanged when disabled.
 
+## Who this is for
+- **Retail traders** who want a reproducible research loop with clear guardrails before experimenting with live execution.
+- **Prop traders** who need a deterministic scaffold with optional dashboarding and risk gating.
+- **Protocol teams** exploring market microstructure, liquidity modeling, and agent-based simulations without shipping production capital flows.
+- **Crypto exchanges** that want a reference pipeline for signals, slippage estimates, and monitoring-friendly outputs.
+
 ## Goals
 - Deterministic defaults (`seed=42`).
 - No claims of profitability or completed training.
