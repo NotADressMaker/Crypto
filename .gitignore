@@ -15,3 +15,8 @@ logs/
 data/
 models/
 artifacts/
+!src/cryptoquant/data/
+!src/cryptoquant/data/**
+!src/cryptoquant/models/
+!src/cryptoquant/models/**
+src/cryptoquant/**/__pycache__/

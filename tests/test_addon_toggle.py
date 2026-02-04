@@ -1,5 +1,5 @@
 import pandas as pd
-from cryptoquant.config import AppConfig, RiskConfig, DataConfig, FeatureConfig, DatasetConfig, ModelConfig, BacktestConfig, ServeConfig, AddonConfig, QuantumPredictorConfig, NashAnalyzerConfig, MonitoringConfig
+from cryptoquant.config import AppConfig, RiskConfig, DataConfig, FeatureConfig, DatasetConfig, ModelConfig, BacktestConfig, ServeConfig, AddonConfig, QuantumPredictorConfig, NashAnalyzerConfig, MonitoringConfig, LiquidityConfig
 from cryptoquant.models.baseline_gbdt import train, save
 from cryptoquant.models.router import predict_with_router
 
@@ -27,6 +27,13 @@ def make_base_config(model_path: str, addon_enabled: bool) -> AppConfig:
             enabled=addon_enabled,
             quantum_predictor=QuantumPredictorConfig(enabled=True, amplitude=0.5),
             nash_analyzer=NashAnalyzerConfig(enabled=True, players=2),
+        ),
+        liquidity=LiquidityConfig(
+            base_spread_bps=1.5,
+            max_impact_bps=25,
+            size_reference=100000,
+            venue_liquidity={"binance": 1.0},
+            horizon_multipliers={"5m": 1.05},
         ),
         monitoring=MonitoringConfig(log_path="./logs", logging_config="configs/logging.yaml"),
     )

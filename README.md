@@ -39,6 +39,22 @@ python scripts/serve_signal.py --config configs/default.yaml
 python scripts/run_dashboard.py --config configs/default.yaml
 ```
 
+## Persona workflows
+Generate persona-specific reports that bundle guardrails, deterministic runs, and monitoring-ready outputs:
+```bash
+# Retail research loop
+python scripts/run_persona.py retail --config configs/default.yaml
+
+# Prop trader scaffold + dashboard toggle
+python scripts/run_persona.py prop --config configs/default.yaml
+
+# Protocol microstructure + agent simulations
+python scripts/run_persona.py protocol --config configs/default.yaml
+
+# Exchange signal + slippage monitoring snapshot
+python scripts/run_persona.py exchange --config configs/default.yaml
+```
+
 ## Configuration
 - Primary config: `configs/default.yaml`
 - Logging: `configs/logging.yaml`
