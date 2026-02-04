@@ -39,12 +39,16 @@ def _guardrails(config: AppConfig) -> Dict[str, Any]:
 def _load_latest_features(config: AppConfig) -> pd.DataFrame:
     dataset_path = build_dataset(config)
     data = pd.read_csv(dataset_path)
-    return data.tail(1)
+    result = data.tail(1)
+    if result.empty:
+        raise ValueError("No feature data available after building dataset")
+    return result
 
 
 def run_persona(config: AppConfig, persona: str) -> Dict[str, Any]:
     if persona not in PERSONAS:
-        raise ValueError(f"Unknown persona: {persona}")
+        valid = ", ".join(sorted(PERSONAS))
+        raise ValueError(f"Unknown persona: {persona!r}. Valid options: {valid}")
     if persona == "retail":
         return _run_retail(config)
     if persona == "prop":
@@ -114,8 +118,8 @@ def _run_protocol(config: AppConfig) -> Dict[str, Any]:
         config,
         features,
         size=config.liquidity.size_reference,
-        venue=features["venue"].iloc[0],
-        horizon=features["horizon"].iloc[0],
+        venue=str(features["venue"].iloc[0]),
+        horizon=str(features["horizon"].iloc[0]),
     )
     agent_result = run_agent_based_simulation(seed=config.seed, start_price=float(features["close"].iloc[0]))
     report = _base_report(config, "protocol")
@@ -144,17 +148,19 @@ def _run_exchange(config: AppConfig) -> Dict[str, Any]:
     data = pd.read_csv(dataset_path)
     latest = data.tail(1)
     probs = predict_with_router(config, latest)
+    if latest.empty:
+        raise ValueError("No data available for exchange persona")
     slippage = forecast_slippage(
         config,
         latest,
         size=config.liquidity.size_reference,
-        venue=latest["venue"].iloc[0],
-        horizon=latest["horizon"].iloc[0],
+        venue=str(latest["venue"].iloc[0]),
+        horizon=str(latest["horizon"].iloc[0]),
     )
     payload = {
-        "symbol": latest["symbol"].iloc[0],
-        "horizon": latest["horizon"].iloc[0],
-        "venue": latest["venue"].iloc[0],
+        "symbol": str(latest["symbol"].iloc[0]),
+        "horizon": str(latest["horizon"].iloc[0]),
+        "venue": str(latest["venue"].iloc[0]),
         "probability": float(probs.iloc[0]),
         "slippage": slippage,
     }
