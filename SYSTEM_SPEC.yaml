@@ -1,0 +1,159 @@
+SYSTEM_SPEC:
+  name: CRYPTO_QUANT_SYSTEM
+  io_contract:
+    input: "market_state + optional_position_state"
+    output: "core_signal{score,confidence,regime} + risk{limits,flags} + optional_orders"
+  invariants:
+  - "Core output schema stable across versions"
+  - "No orders unless EXECUTION_ON"
+  - "Addon OFF => core behavior unchanged"
+  modules:
+  - DATA_INGEST
+  - NORMALIZER
+  - FEATURE_STORE
+  - DATASET_BUILDER
+  - TRAINING_PIPELINE
+  - MODEL_REGISTRY
+  - BACKTEST_SIM
+  - SIGNAL_SERVICE
+  - RISK_ENGINE
+  - EXECUTION_ENGINE
+  - MONITORING
+
+CORE_BUILD_PLAN:
+  DATA_INGEST:
+    feeds: ["ohlcv","trades","l2_optional","funding","open_interest","basis","fees"]
+    storage: ["raw_events_parquet","derived_bars_parquet"]
+    checks: ["timestamp_sync","symbol_map","gap_detector"]
+  FEATURE_STORE:
+    feature_sets:
+    - "returns_momentum"
+    - "volatility"
+    - "liquidity_spread"
+    - "flow_imbalance"
+    - "derivatives_funding_oi_basis"
+    versioning: "features_vN with hashes"
+  DATASET_BUILDER:
+    labels: ["dir_h","ret_h","vol_h","tail_h"]
+    split: "walk_forward"
+    leakage_guard: "feature_time<=label_time"
+  TRAINING_PIPELINE:
+    baseline: "gbdt + calibration"
+    router: "regime_router_optional"
+    eval: ["offline_metrics","trading_sim_metrics","stability_slices"]
+  BACKTEST_SIM:
+    realism: ["fees","maker_taker","funding","slippage_model","partial_fills","downtime"]
+    outputs: ["pnl","dd","turnover","capacity_proxy"]
+  SIGNAL_SERVICE:
+    outputs: ["score","confidence","regime","abstain"]
+    gating: ["confidence_tau","regime_match","drift_ok"]
+  RISK_ENGINE:
+    gates: ["max_dd","max_loss_day","vol_target","liquidity_min","exchange_health"]
+    actions: ["abstain","reduce_size","halt"]
+  EXECUTION_ENGINE:
+    enabled_by: "EXECUTION_ON"
+    order_types: ["limit","market"]
+    router: "venue_router_optional"
+  MONITORING:
+    metrics: ["latency_p95","data_gap_rate","drift","calibration","slippage","pnl_attr"]
+    alerts: ["drift_high","venue_down","dd_breach","latency_spike"]
+
+ADDON_SPEC:
+  name: PROP_TRADER_DASHBOARD_ADDON
+  type: sidecar
+  extends: CRYPTO_QUANT_SYSTEM
+  activation:
+    gating: feature_flag
+    flags: ["DASHBOARD_ON","ADDON_SIGNALS_ON","EXECUTION_ON (explicit)"]
+    fallback: CORE_OUTPUT
+  compatibility:
+    must_preserve:
+    - "Core io_contract unchanged"
+    - "Core signals unchanged when addon off"
+    must_not_change:
+    - "Order placement behavior unless EXECUTION_ON"
+
+ADDON_MODULES:
+  QUANTUM_INSPIRED_AI:
+    purpose: "Optimize expert weights / feature subsets using QUBO/annealing-style heuristics"
+    outputs: ["expert_weights","tau","confidence_adjustment"]
+    constraints: ["cpu_gpu_ok","no_quantum_hardware_required"]
+  NASH_EQUILIBRIUM_ANALYZER:
+    purpose: "Game-theoretic equilibrium estimates between simplified agent classes"
+    agents: ["market_maker","trend","mean_revert","funding_arb"]
+    outputs: ["equilibrium_mixture","robust_action_band","assumption_sensitivity"]
+  DASHBOARD_UI:
+    users: ["prop_trader","risk_manager"]
+    views:
+    - "Market: liquidity/spread/funding/basis heatmaps"
+    - "Signals: score/confidence/regime + feature contributions"
+    - "Risk: exposure/drawdown/correlation shocks + kill-switch"
+    - "Execution: orders/fills/slippage/latency (if enabled)"
+    - "GameTheory: Nash mixture + scenario toggles + uncertainty bands"
+    fidelity:
+      refresh: "subsecond_if_available_else_1s"
+      time_sync: "exchange_ts + local_ts + drift"
+
+DATA_PLAN:
+  sources_used: ["ohlcv","trades","l2_optional","funding","oi","basis","fees","optional_onchain"]
+  schema:
+    key: ["ts","venue","symbol"]
+    features: ["returns","vol","volume","spread","imbalance","funding","oi_delta","basis","regime"]
+    labels: ["dir_h","ret_h","vol_h","tail_h"]
+  splits: {train:"wf_60", val:"wf_20", test:"wf_20"}
+  checks: ["no_leakage","coverage","label_balance","drift_baseline"]
+
+TRAIN_PLAN:
+  base_model: UNKNOWN
+  method: ["gbdt","calibration","router_optional"]
+  hp: {epochs:UNKNOWN, batch_size:UNKNOWN, lr:UNKNOWN, max_seq_len:UNKNOWN, seed:42}
+  eval:
+    metrics: ["AUC_dir","MAE_ret","MAE_vol","Brier_conf","PnL_after_fees","max_dd","turnover"]
+    slices: ["by_regime","by_symbol_bucket","by_venue"]
+    regression_gate:
+      - "core_outputs_identical_when_addon_off"
+      - "PnL_after_fees >= baseline - epsilon"
+      - "max_dd <= baseline + delta"
+      - "turnover <= limit"
+
+INTEGRATION:
+  placement: "sidecar_services + shared_feature_store"
+  interface_map:
+    in: "market_state + features + core_signal(optional)"
+    out: "addon_signal + dashboard_panels + nash_panel"
+  rollout: "shadow -> canary -> gradual"
+  monitoring: ["drift","latency","slippage","dd_breach","calibration_drift"]
+
+ARTIFACTS:
+  files:
+  - "data/ingest/*"
+  - "features/feature_store.py"
+  - "train/pipeline.py"
+  - "eval/backtest_sim.py"
+  - "serve/signal_api.py"
+  - "serve/quantum_selector.py"
+  - "serve/nash_analyzer.py"
+  - "ui/dashboard_app/*"
+  - "MODEL_CARD.md"
+
+RISKS:
+  failure_modes:
+  - "Overfitting"
+  - "Confidence miscalibration"
+  - "Game-theory assumption errors"
+  - "Latency/data gaps"
+  mitigations:
+  - "walk-forward + regime slices"
+  - "calibration + abstain gating"
+  - "sensitivity reports + uncertainty display"
+  - "health checks + graceful fallback"
+
+NEXT:
+  steps:
+  - "Set base_model + horizons + venues"
+  - "Implement ingest + feature store v1"
+  - "Baseline gbdt + calibration + backtest realism"
+  - "Add sidecar signal service + risk gates"
+  - "Build dashboard UI + monitoring"
+  - "Integrate quantum-inspired selector + Nash analyzer"
+  - "Shadow/canary rollout with regression gates"
