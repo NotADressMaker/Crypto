@@ -44,6 +44,16 @@ serve:
   host: 0.0.0.0
   port: 8000
 
+liquidity:
+  base_spread_bps: 1.5
+  max_impact_bps: 25
+  size_reference: 100000
+  venue_liquidity:
+    binance: 1.0
+  horizon_multipliers:
+    5m: 1.05
+    1h: 0.95
+
 addon:
   enabled: false
   quantum_predictor:

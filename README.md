@@ -41,6 +41,9 @@ python scripts/run_dashboard.py --config configs/default.yaml
 ## Addons
 Enable addons by setting `addon.enabled: true` in `configs/default.yaml`. When disabled, the core pipeline uses the baseline model only and skips addon logic.
 
+## Liquidity + Slippage Forecaster
+The signal API now exposes a lightweight liquidity forecaster. Use `/slippage?size=25000&symbol=BTCUSDT&horizon=5m&venue=binance` to estimate expected slippage and fill probability for a trade size at the latest snapshot.
+
 ## Notes
 - This repo is a scaffold; data ingestion uses deterministic synthetic data unless real credentials are provided.
 - Secrets and API keys must be supplied via environment variables.
