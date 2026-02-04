@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 import yaml
 
 
@@ -53,6 +53,15 @@ class ServeConfig:
 
 
 @dataclass(frozen=True)
+class LiquidityConfig:
+    base_spread_bps: float
+    max_impact_bps: float
+    size_reference: float
+    venue_liquidity: Dict[str, float]
+    horizon_multipliers: Dict[str, float]
+
+
+@dataclass(frozen=True)
 class QuantumPredictorConfig:
     enabled: bool
     amplitude: float
@@ -90,6 +99,7 @@ class AppConfig:
     backtest: BacktestConfig
     risk: RiskConfig
     serve: ServeConfig
+    liquidity: LiquidityConfig
     addon: AddonConfig
     monitoring: MonitoringConfig
 
@@ -110,6 +120,7 @@ def load_config(path: str) -> AppConfig:
         backtest=BacktestConfig(**raw["backtest"]),
         risk=RiskConfig(**raw["risk"]),
         serve=ServeConfig(**raw["serve"]),
+        liquidity=LiquidityConfig(**raw["liquidity"]),
         addon=AddonConfig(
             enabled=raw["addon"]["enabled"],
             quantum_predictor=QuantumPredictorConfig(**raw["addon"]["quantum_predictor"]),

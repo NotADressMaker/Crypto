@@ -1,19 +1,33 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 import pandas as pd
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from cryptoquant.config import AppConfig
 from cryptoquant.datasets.builder import build_dataset
+from cryptoquant.market.liquidity import forecast_slippage
 from cryptoquant.models.router import predict_with_router, train_router, model_path
 from cryptoquant.risk.gates import apply_risk_gates
 
 
-def _latest_features(config: AppConfig) -> pd.DataFrame:
+def _latest_features(
+    config: AppConfig,
+    symbol: Optional[str] = None,
+    horizon: Optional[str] = None,
+    venue: Optional[str] = None,
+) -> pd.DataFrame:
     dataset_path = build_dataset(config)
     data = pd.read_csv(dataset_path)
+    if symbol:
+        data = data[data["symbol"] == symbol]
+    if horizon:
+        data = data[data["horizon"] == horizon]
+    if venue:
+        data = data[data["venue"] == venue]
+    if data.empty:
+        data = pd.read_csv(dataset_path)
     return data.tail(1)
 
 
@@ -51,6 +65,31 @@ def create_app(config: AppConfig) -> FastAPI:
             "execution_on": config.risk.execution_on,
         }
 
+    @app.get("/slippage")
+    def slippage(
+        size: float,
+        symbol: Optional[str] = None,
+        horizon: Optional[str] = None,
+        venue: Optional[str] = None,
+    ) -> dict[str, Any]:
+        features = _latest_features(config, symbol=symbol, horizon=horizon, venue=venue)
+        resolved_symbol = features["symbol"].iloc[0]
+        resolved_horizon = features["horizon"].iloc[0]
+        resolved_venue = features["venue"].iloc[0]
+        forecast = forecast_slippage(
+            config,
+            features,
+            size=size,
+            venue=resolved_venue,
+            horizon=resolved_horizon,
+        )
+        return {
+            "symbol": resolved_symbol,
+            "horizon": resolved_horizon,
+            "venue": resolved_venue,
+            "forecast": forecast,
+        }
+
     return app
 
 
@@ -62,6 +101,14 @@ def create_dashboard_app(config: AppConfig) -> FastAPI:
         addon_status = "ENABLED" if config.addon.enabled else "DISABLED"
         quantum_status = "ENABLED" if config.addon.quantum_predictor.enabled else "DISABLED"
         nash_status = "ENABLED" if config.addon.nash_analyzer.enabled else "DISABLED"
+        features = _latest_features(config)
+        slippage_preview = forecast_slippage(
+            config,
+            features,
+            size=config.liquidity.size_reference,
+            venue=features["venue"].iloc[0],
+            horizon=features["horizon"].iloc[0],
+        )
         html = f"""
         <html>
           <head><title>Prop Trader Dashboard</title></head>
@@ -79,6 +126,15 @@ def create_dashboard_app(config: AppConfig) -> FastAPI:
               <li>Quantum-Inspired Predictor: {quantum_status}</li>
               <li>Nash Equilibrium Analyzer: {nash_status}</li>
             </ul>
+            <h2>Liquidity + Slippage Forecaster</h2>
+            <p>
+              If you trade size {slippage_preview["inputs"]["size"]:,.0f} now,
+              expected slippage is {slippage_preview["expected_slippage_bps"]} bps with
+              fill probability {slippage_preview["fill_probability"] * 100:.1f}%.
+            </p>
+            <p>
+              Try the API: <code>/slippage?size=25000&amp;symbol=BTCUSDT&amp;horizon=5m&amp;venue=binance</code>
+            </p>
             <p>This dashboard uses placeholder data for visualization.</p>
           </body>
         </html>
