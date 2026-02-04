@@ -1,0 +1,58 @@
+repo_name: crypto-quant-system
+system_goal: "Crypto quant system for prop traders with addon-first ML + game theory dashboard"
+base_model: UNKNOWN
+seed: 42
+
+data:
+  data_sources:
+    - EXCHANGE_APIS
+    - DERIVATIVES_FEEDS
+    - OPTIONAL_ONCHAIN
+  default_symbols:
+    - BTCUSDT
+    - ETHUSDT
+  default_horizons:
+    - 5m
+    - 1h
+  default_venues:
+    - binance
+  data_path: ./data
+
+features:
+  feature_store_path: ./data/features
+
+datasets:
+  dataset_path: ./data/datasets
+  label_horizon: 1
+
+models:
+  model_path: ./models
+  baseline_model: gbdt
+  calibration: none
+
+backtest:
+  initial_capital: 100000
+  fee_bps: 2
+  slippage_bps: 1
+
+risk:
+  max_position: 1.0
+  max_drawdown: 0.2
+  execution_on: false
+
+serve:
+  host: 0.0.0.0
+  port: 8000
+
+addon:
+  enabled: false
+  quantum_predictor:
+    enabled: true
+    amplitude: 0.7
+  nash_analyzer:
+    enabled: true
+    players: 2
+
+monitoring:
+  log_path: ./logs
+  logging_config: configs/logging.yaml
