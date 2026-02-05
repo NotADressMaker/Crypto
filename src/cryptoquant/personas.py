@@ -102,7 +102,7 @@ def _run_prop(config: AppConfig) -> Dict[str, Any]:
             "addon_status": {
                 "addon_enabled": config.addon.enabled,
                 "quantum_predictor": config.addon.quantum_predictor.enabled,
-                "nash_analyzer": config.addon.nash_analyzer.enabled,
+                "nash_analyzer": config.addon.ne.enabled,
             },
             "next_step": "Launch dashboard or wire risk gates into execution service.",
         }

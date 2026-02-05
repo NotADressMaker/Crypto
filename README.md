@@ -63,6 +63,29 @@ python scripts/run_persona.py exchange --config configs/default.yaml
 ## Addons
 Enable addons by setting `addon.enabled: true` in `configs/default.yaml`. When disabled, the core pipeline uses the baseline model only and skips addon logic.
 
+### Nash Equilibrium analyzer addon
+The Nash Equilibrium analyzer maps the paper _“Nash Equilibrium in Cryptocurrency Markets: Analyzing Bitcoin’s Strategic Position and Its Relationship with Other Crypto Assets”_ into deterministic diagnostics. It produces:
+- BTC Focal Dominance Index (FDI) for focal-point dominance.
+- Altcoin Dependence Scores (ADS) for per-asset BTC sensitivity.
+- Rule-based equilibrium regimes (BTC-led, ALT-led, MIXED).
+- Deviation-cost diagnostics for all-alt vs BTC-mixed shock drawdowns.
+
+To enable:
+```yaml
+addon:
+  enabled: true
+  ne:
+    enabled: true
+```
+
+Artifacts land under `outputs/ne/`:
+- `ne_summary.json`
+- `ne_asset_scores.csv`
+- `ne_regimes.csv`
+- `ne_report.md`
+
+The metrics are diagnostics only and **not** financial advice. See the mapping doc at `docs/papers/nash_equilibrium_bitcoin.md`.
+
 ## Liquidity + Slippage Forecaster
 The signal API now exposes a lightweight liquidity forecaster. Use `/slippage?size=25000&symbol=BTCUSDT&horizon=5m&venue=binance` to estimate expected slippage and fill probability for a trade size at the latest snapshot.
 

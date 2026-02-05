@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import pandas as pd
+from cryptoquant.addons.nash_equilibrium import ne_enabled, run_ne_analysis
 from cryptoquant.backtest.metrics import compute_metrics
 from cryptoquant.config import AppConfig
 from cryptoquant.datasets.builder import build_dataset
@@ -23,4 +24,6 @@ def run_backtest(config: AppConfig) -> dict:
 
     metrics = compute_metrics(equity)
     logger.info("Backtest metrics: %s", metrics)
+    if ne_enabled(config):
+        run_ne_analysis(config, dataset_path)
     return metrics

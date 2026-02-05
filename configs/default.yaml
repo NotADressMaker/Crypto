@@ -59,9 +59,36 @@ addon:
   quantum_predictor:
     enabled: true
     amplitude: 0.7
-  nash_analyzer:
-    enabled: true
-    players: 2
+  ne:
+    enabled: false
+    horizon: 5m
+    venue: binance
+    btc_symbol: BTCUSDT
+    alt_universe:
+      - ETHUSDT
+    window: 200
+    regime_window: 120
+    lead_lag: 3
+    corr_threshold: 0.35
+    shock_sigma: 2.0
+    tail_sigma: 2.0
+    reversal_window: 3
+    fdi_weights:
+      centrality: 0.4
+      influence: 0.4
+      benchmark: 0.2
+    ads_weights:
+      beta: 0.5
+      tail: 0.3
+      reversal: 0.2
+    regime_thresholds:
+      fdi_high: 0.6
+      influence_high: 0.5
+      centrality_low: 0.4
+      alt_dispersion_high: 0.6
+    btc_mix_weight: 0.5
+    shock_window: 5
+    output_path: outputs/ne
 
 monitoring:
   log_path: ./logs

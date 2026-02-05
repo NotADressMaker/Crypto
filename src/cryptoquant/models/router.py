@@ -20,9 +20,6 @@ def _apply_addons(config: AppConfig, data: pd.DataFrame, probs: pd.Series) -> pd
     if config.addon.quantum_predictor.enabled and "return" in data.columns:
         quantum_signal = data["return"].fillna(0).clip(-0.05, 0.05)
         adjusted = adjusted * (1 + config.addon.quantum_predictor.amplitude * quantum_signal)
-    if config.addon.nash_analyzer.enabled and "range" in data.columns:
-        imbalance = data["range"].fillna(0)
-        adjusted = adjusted + 0.05 * (imbalance - imbalance.mean())
     return adjusted.clip(0, 1)
 
 

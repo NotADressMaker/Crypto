@@ -35,6 +35,31 @@ from cryptoquant.risk.gates import apply_risk_gates
 
 
 def _make_config(tmp_path: Path, execution_on: bool = True) -> AppConfig:
+    ne_config = NashAnalyzerConfig(
+        enabled=False,
+        horizon="5m",
+        venue="binance",
+        btc_symbol="BTCUSDT",
+        alt_universe=["ETHUSDT"],
+        window=120,
+        regime_window=60,
+        lead_lag=2,
+        corr_threshold=0.3,
+        shock_sigma=2.0,
+        tail_sigma=2.0,
+        reversal_window=2,
+        fdi_weights={"centrality": 0.4, "influence": 0.4, "benchmark": 0.2},
+        ads_weights={"beta": 0.5, "tail": 0.3, "reversal": 0.2},
+        regime_thresholds={
+            "fdi_high": 0.6,
+            "influence_high": 0.5,
+            "centrality_low": 0.4,
+            "alt_dispersion_high": 0.6,
+        },
+        btc_mix_weight=0.5,
+        shock_window=4,
+        output_path=str(tmp_path / "outputs" / "ne"),
+    )
     return AppConfig(
         repo_name="test",
         system_goal="test",
@@ -60,7 +85,7 @@ def _make_config(tmp_path: Path, execution_on: bool = True) -> AppConfig:
         addon=AddonConfig(
             enabled=False,
             quantum_predictor=QuantumPredictorConfig(enabled=False, amplitude=0.05),
-            nash_analyzer=NashAnalyzerConfig(enabled=False, players=2),
+            ne=ne_config,
         ),
         liquidity=LiquidityConfig(
             base_spread_bps=1.5,
