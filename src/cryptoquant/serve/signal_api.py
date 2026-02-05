@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
 from pathlib import Path
 from threading import Lock
 from typing import Any, Optional
@@ -8,6 +9,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from cryptoquant.config import AppConfig
+from cryptoquant.addons.nash_equilibrium import ne_enabled, run_ne_analysis
 from cryptoquant.datasets.builder import build_dataset
 from cryptoquant.market.liquidity import forecast_slippage
 from cryptoquant.models.router import predict_with_router, train_router, model_path
@@ -133,7 +135,7 @@ def create_dashboard_app(config: AppConfig) -> FastAPI:
     def dashboard() -> str:
         addon_status = "ENABLED" if config.addon.enabled else "DISABLED"
         quantum_status = "ENABLED" if config.addon.quantum_predictor.enabled else "DISABLED"
-        nash_status = "ENABLED" if config.addon.nash_analyzer.enabled else "DISABLED"
+        nash_status = "ENABLED" if config.addon.ne.enabled else "DISABLED"
         features = _latest_features(config, cache)
         slippage_preview = forecast_slippage(
             config,
@@ -142,6 +144,40 @@ def create_dashboard_app(config: AppConfig) -> FastAPI:
             venue=str(features["venue"].iloc[0]),
             horizon=str(features["horizon"].iloc[0]),
         )
+        ne_panel = ""
+        if ne_enabled(config):
+            artifacts = run_ne_analysis(config, Path(build_dataset(config)))
+            with open(artifacts["summary"], "r", encoding="utf-8") as handle:
+                summary_payload = json.load(handle)
+            summary = summary_payload["summary"]
+            deviation_cost = summary_payload["deviation_cost"]
+            asset_scores = pd.read_csv(artifacts["assets"]).sort_values("ads", ascending=False).head(10)
+            regimes = pd.read_csv(artifacts["regimes"])
+            latest_regime = regimes.tail(1).to_dict(orient="records")[0] if not regimes.empty else {}
+            ads_rows = "\n".join(
+                f"<li>{row['asset']}: {row['ads']:.1f}</li>" for _, row in asset_scores.iterrows()
+            )
+            ne_panel = f"""
+            <h2>Nash Equilibrium Lens</h2>
+            <ul>
+              <li>FDI: {summary['fdi']:.3f}</li>
+              <li>Centrality: {summary['centrality']:.3f}</li>
+              <li>Influence: {summary['influence']:.3f}</li>
+              <li>Benchmark share: {summary['benchmark_share']:.3f}</li>
+              <li>Regime: {latest_regime.get('regime', 'N/A')} ({latest_regime.get('confidence', 0.0):.2f})</li>
+            </ul>
+            <h3>Top BTC-Dependent Alts (ADS)</h3>
+            <ol>
+              {ads_rows}
+            </ol>
+            <h3>Deviation Cost</h3>
+            <ul>
+              <li>All-alt drawdown: {deviation_cost['all_alt_drawdown']:.4f}</li>
+              <li>Mixed drawdown: {deviation_cost['mixed_drawdown']:.4f}</li>
+              <li>Deviation cost: {deviation_cost['deviation_cost']:.4f}</li>
+            </ul>
+            <p>Detailed artifacts written to {config.addon.ne.output_path}.</p>
+            """
         html = f"""
         <html>
           <head><title>Prop Trader Dashboard</title></head>
@@ -168,6 +204,7 @@ def create_dashboard_app(config: AppConfig) -> FastAPI:
             <p>
               Try the API: <code>/slippage?size=25000&amp;symbol=BTCUSDT&amp;horizon=5m&amp;venue=binance</code>
             </p>
+            {ne_panel}
             <p>This dashboard uses placeholder data for visualization.</p>
           </body>
         </html>

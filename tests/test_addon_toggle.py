@@ -4,6 +4,34 @@ from cryptoquant.models.baseline_gbdt import train, save
 from cryptoquant.models.router import predict_with_router
 
 
+def _ne_config(enabled: bool, output_path: str) -> NashAnalyzerConfig:
+    return NashAnalyzerConfig(
+        enabled=enabled,
+        horizon="5m",
+        venue="binance",
+        btc_symbol="BTCUSDT",
+        alt_universe=["ETHUSDT"],
+        window=120,
+        regime_window=60,
+        lead_lag=2,
+        corr_threshold=0.3,
+        shock_sigma=2.0,
+        tail_sigma=2.0,
+        reversal_window=2,
+        fdi_weights={"centrality": 0.4, "influence": 0.4, "benchmark": 0.2},
+        ads_weights={"beta": 0.5, "tail": 0.3, "reversal": 0.2},
+        regime_thresholds={
+            "fdi_high": 0.6,
+            "influence_high": 0.5,
+            "centrality_low": 0.4,
+            "alt_dispersion_high": 0.6,
+        },
+        btc_mix_weight=0.5,
+        shock_window=4,
+        output_path=output_path,
+    )
+
+
 def make_base_config(model_path: str, addon_enabled: bool) -> AppConfig:
     return AppConfig(
         repo_name="test",
@@ -26,7 +54,7 @@ def make_base_config(model_path: str, addon_enabled: bool) -> AppConfig:
         addon=AddonConfig(
             enabled=addon_enabled,
             quantum_predictor=QuantumPredictorConfig(enabled=True, amplitude=0.5),
-            nash_analyzer=NashAnalyzerConfig(enabled=True, players=2),
+            ne=_ne_config(enabled=True, output_path="./outputs/ne"),
         ),
         liquidity=LiquidityConfig(
             base_spread_bps=1.5,

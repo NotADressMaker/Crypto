@@ -81,7 +81,12 @@ ADDON_MODULES:
   NASH_EQUILIBRIUM_ANALYZER:
     purpose: "Game-theoretic equilibrium estimates between simplified agent classes"
     agents: ["market_maker","trend","mean_revert","funding_arb"]
-    outputs: ["equilibrium_mixture","robust_action_band","assumption_sensitivity"]
+    outputs:
+    - "btc_focal_dominance_index"
+    - "altcoin_dependence_scores"
+    - "equilibrium_regimes"
+    - "deviation_cost_proxy"
+    - "ne_report_md"
   DASHBOARD_UI:
     users: ["prop_trader","risk_manager"]
     views:
@@ -135,6 +140,7 @@ ARTIFACTS:
   - "serve/nash_analyzer.py"
   - "ui/dashboard_app/*"
   - "MODEL_CARD.md"
+  - "outputs/ne/*"
 
 RISKS:
   failure_modes:

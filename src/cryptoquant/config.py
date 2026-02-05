@@ -70,14 +70,30 @@ class QuantumPredictorConfig:
 @dataclass(frozen=True)
 class NashAnalyzerConfig:
     enabled: bool
-    players: int
+    horizon: str
+    venue: str
+    btc_symbol: str
+    alt_universe: List[str]
+    window: int
+    regime_window: int
+    lead_lag: int
+    corr_threshold: float
+    shock_sigma: float
+    tail_sigma: float
+    reversal_window: int
+    fdi_weights: Dict[str, float]
+    ads_weights: Dict[str, float]
+    regime_thresholds: Dict[str, float]
+    btc_mix_weight: float
+    shock_window: int
+    output_path: str
 
 
 @dataclass(frozen=True)
 class AddonConfig:
     enabled: bool
     quantum_predictor: QuantumPredictorConfig
-    nash_analyzer: NashAnalyzerConfig
+    ne: NashAnalyzerConfig
 
 
 @dataclass(frozen=True)
@@ -137,7 +153,7 @@ def load_config(path: str) -> AppConfig:
         addon=AddonConfig(
             enabled=raw["addon"]["enabled"],
             quantum_predictor=QuantumPredictorConfig(**raw["addon"]["quantum_predictor"]),
-            nash_analyzer=NashAnalyzerConfig(**raw["addon"]["nash_analyzer"]),
+            ne=NashAnalyzerConfig(**raw["addon"]["ne"]),
         ),
         monitoring=MonitoringConfig(**raw["monitoring"]),
     )
